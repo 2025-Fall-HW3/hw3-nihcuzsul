@@ -70,8 +70,40 @@ class MyPortfolio:
         """
         TODO: Complete Task 4 Below
         """
-        
-        
+
+        for i in range(self.lookback, len(self.price)):
+
+            prices_window = self.price[assets].iloc[i-200:i]   # 200d trend window
+            if len(prices_window) < 200:
+                continue
+
+            ma200 = prices_window.mean()
+            current_price = self.price[assets].iloc[i]
+
+            # select sectors in long-term uptrend
+            trend_up = (current_price > ma200)
+
+            selected = trend_up[trend_up].index.tolist()
+
+            if len(selected) == 0:
+                # fallback: equal weight all
+                w = np.ones(len(assets)) / len(assets)
+                self.portfolio_weights.loc[self.price.index[i], assets] = w
+                self.portfolio_weights.loc[self.price.index[i], self.exclude] = 0
+                continue
+
+            # risk parity on selected
+            R_win = self.returns[selected].iloc[i-60:i]
+            vol = R_win.std().replace(0, 1e-6)
+            inv_vol = 1 / vol
+            w_sel = inv_vol / inv_vol.sum()
+
+            w_full = pd.Series(0.0, index=assets)
+            w_full[selected] = w_sel.values
+
+            self.portfolio_weights.loc[self.price.index[i], assets] = w_full.values
+            self.portfolio_weights.loc[self.price.index[i], self.exclude] = 0
+
         """
         TODO: Complete Task 4 Above
         """
