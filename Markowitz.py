@@ -62,6 +62,11 @@ class EqualWeightPortfolio:
         """
         TODO: Complete Task 1 Below
         """
+        n_assets = len(assets)
+        equal_weight = 1 / n_assets
+
+        self.portfolio_weights[assets] = equal_weight
+        self.portfolio_weights[self.exclude] = 0
 
         """
         TODO: Complete Task 1 Above
@@ -113,8 +118,18 @@ class RiskParityPortfolio:
         """
         TODO: Complete Task 2 Below
         """
+        
+        for i in range(self.lookback + 1, len(df)):
 
-
+            R_n = df_returns[assets].iloc[i - self.lookback : i]
+            vol = R_n.std()
+            vol = vol.replace(0, 1e-6)
+            # Risk parity weights = 1/vol normalized
+            inv_vol = 1 / vol
+            weights = inv_vol / inv_vol.sum()
+            # Assign weights
+            self.portfolio_weights.loc[df.index[i], assets] = weights.values
+            self.portfolio_weights.loc[df.index[i], self.exclude] = 0
 
         """
         TODO: Complete Task 2 Above
@@ -190,8 +205,23 @@ class MeanVariancePortfolio:
 
                 # Sample Code: Initialize Decision w and the Objective
                 # NOTE: You can modify the following code
-                w = model.addMVar(n, name="w", ub=1)
-                model.setObjective(w.sum(), gp.GRB.MAXIMIZE)
+                # w = model.addMVar(n, name="w", ub=1)
+                # model.setObjective(w.sum(), gp.GRB.MAXIMIZE)
+
+                # Decision variables: w >= 0, w <= 1
+                w = model.addMVar(n, lb=0, ub=1, name="w")
+                model.addConstr(w.sum() == 1)
+
+                # Markowitz objective:
+                # maximize w^T mu - (gamma/2) w^T Sigma w
+
+                linear_term = w @ mu            # w^T μ
+                quad_term   = w @ Sigma @ w     # w^T Σ w
+
+                model.setObjective(
+                    linear_term - 0.5 * gamma * quad_term,
+                    gp.GRB.MAXIMIZE
+                )
 
                 """
                 TODO: Complete Task 3 Above
